@@ -59,7 +59,7 @@ class CMakeBuild(build_ext):
         # print(platform.system())
         # cfg = 'Debug' if self.debug else 'Release'
         cfg = 'Release'
-        build_args = ['--config', cfg] + ['--target', 'mtk']
+        build_args = ['--config', cfg] + ['--target', 'dxslv']
 
         # Setting up call to cmake, platform-dependent
         if platform.system() == "Windows":
