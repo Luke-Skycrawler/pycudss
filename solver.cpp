@@ -40,9 +40,17 @@ void CUSolver::init()
 
 void CUSolver::factorize()
 {
-    assert(stage == 1);
+    assert(stage >= 1);
     /* Factorization */
     cudssExecute(handle, CUDSS_PHASE_FACTORIZATION, solver_config, solver_data, A, x, b);
+    stage = 2;
+}
+
+void CUSolver::refactorize(const Vec &new_values) {
+    assert(stage >= 1);
+    cudaMemcpy(values_d, new_values.data(), nnz * sizeof(double), cudaMemcpyHostToDevice);
+
+    cudssExecute(handle, CUDSS_PHASE_REFACTORIZATION, solver_config, solver_data, A, x, b);
     stage = 2;
 }
 

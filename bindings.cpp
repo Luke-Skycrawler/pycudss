@@ -14,5 +14,6 @@ PYBIND11_MODULE(dxslv, m)
         .def(py::init<const Eigen::SparseMatrix<double> &>())
         .def("analyze_pattern", &CUSolver::analyze_pattern)
         .def("factorize", &CUSolver::factorize)
-        .def("solve", &CUSolver::solve);
+        .def("solve", &CUSolver::solve)
+        .def("refactorize", &CUSolver::refactorize);
 }

@@ -30,6 +30,7 @@ struct SolverBase
     }
     virtual void analyze_pattern() = 0;
     virtual void factorize() = 0;
+    virtual void refactorize(const Vec &new_values) = 0;
     virtual Vec solve(const Vec &b) const = 0;
 };
 
@@ -45,6 +46,7 @@ struct CUSolver : SolverBase
 
     void analyze_pattern() override;
     void factorize() override;
+    void refactorize(const Vec &new_values) override;
     Vec solve(const Vec &b) const override;
     int stage = 0; // 0: not analyzed, 1: analyzed, 2: factorized
 
