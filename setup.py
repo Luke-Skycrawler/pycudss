@@ -44,8 +44,8 @@ class CMakeBuild(build_ext):
         cmake_args = ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir,
                       '-DPYTHON_EXECUTABLE=' + sys.executable,
                       '-DCMAKE_TOOLCHAIN_FILE=' + 'D:/vcpkg/scripts/buildsystems/vcpkg.cmake',
-                      '-Dcudss_DIR=' + 'C:/Program Files/NVIDIA cuDSS/v0.5/lib/12/cmake/cudss',
-                      '-DCUDSS_INSTALL_DIR=' + 'C:/Program Files/NVIDIA cuDSS/v0.5',
+                      '-Dcudss_DIR=' + 'D:/Program Files/NVIDIA cuDSS/v0.6/lib/12/cmake/cudss',
+                      '-DCUDSS_INSTALL_DIR=' + 'D:/Program Files/NVIDIA cuDSS/v0.6',
                       ]
 
         # This is horrible, I don't know other way of installing dependencies on the wheel dependencies

@@ -15,5 +15,7 @@ PYBIND11_MODULE(dxslv, m)
         .def("analyze_pattern", &CUSolver::analyze_pattern)
         .def("factorize", &CUSolver::factorize)
         .def("solve", &CUSolver::solve)
-        .def("refactorize", &CUSolver::refactorize);
+        .def("solve_cuda", &CUSolver::solve_dev)
+        .def("refactorize", &CUSolver::refactorize)
+        .def("refactor_cuda", &CUSolver::refactorize_dev);
 }

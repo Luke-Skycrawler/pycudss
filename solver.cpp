@@ -54,6 +54,14 @@ void CUSolver::refactorize(const Vec &new_values) {
     stage = 2;
 }
 
+void CUSolver::refactorize_dev(uintptr_t new_values_ptr) {
+    assert(stage >= 1);
+    cudaMemcpy(values_d, reinterpret_cast<double*>(new_values_ptr), nnz * sizeof(double), cudaMemcpyDeviceToDevice);
+
+    cudssExecute(handle, CUDSS_PHASE_REFACTORIZATION, solver_config, solver_data, A, x, b);
+    stage = 2;
+}
+
 Vec CUSolver::solve(const Vec &bb) const
 {
     Vec xe;
@@ -66,6 +74,17 @@ Vec CUSolver::solve(const Vec &bb) const
     cudssExecute(handle, CUDSS_PHASE_SOLVE, solver_config, solver_data, A, x, b);
     cudaMemcpy(xe.data(), x_d, nrhs * n * sizeof(double), cudaMemcpyDeviceToHost);
     return xe;
+}
+
+void CUSolver::solve_dev(uintptr_t b_ptr, uintptr_t x_ptr) const
+{
+    assert(stage == 2);
+    int nrhs = 1;
+
+    cudaMemcpy(b_d, reinterpret_cast<double*>(b_ptr), n * sizeof(double), cudaMemcpyDeviceToDevice);
+    /* Solving */
+    cudssExecute(handle, CUDSS_PHASE_SOLVE, solver_config, solver_data, A, x, b);
+    cudaMemcpy(reinterpret_cast<double*>(x_ptr), x_d, nrhs * n * sizeof(double), cudaMemcpyDeviceToDevice);
 }
 
 void CUSolver::analyze_pattern()

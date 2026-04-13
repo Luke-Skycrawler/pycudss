@@ -47,7 +47,9 @@ struct CUSolver : SolverBase
     void analyze_pattern() override;
     void factorize() override;
     void refactorize(const Vec &new_values) override;
+    void refactorize_dev(uintptr_t new_values_ptr);
     Vec solve(const Vec &b) const override;
+    void solve_dev(uintptr_t b_ptr, uintptr_t x_ptr) const; 
     int stage = 0; // 0: not analyzed, 1: analyzed, 2: factorized
 
     void init();
