@@ -1,4 +1,6 @@
 #pragma once
+#include <cstdint>
+#include <stdexcept>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include "cudss.h"
@@ -69,4 +71,34 @@ struct CUSolver : SolverBase
     }
     int *outers_d, *indices_d;
     double *values_d, *b_d, *x_d;
+};
+
+// A device-only counterpart to CUSolver.  The constructor and numerical
+// operations accept CUDA device pointers, so no host Eigen arrays are needed.
+struct CUSolverDevice
+{
+    CUSolverDevice(uintptr_t outers_ptr, uintptr_t indices_ptr,
+                   uintptr_t values_ptr, int n, int nnz);
+
+    void analyze_pattern();
+    void factorize();
+    void refactorize(uintptr_t new_values_ptr);
+    void solve(uintptr_t b_ptr, uintptr_t x_ptr) const;
+
+    ~CUSolverDevice();
+
+    CUSolverDevice(const CUSolverDevice &) = delete;
+    CUSolverDevice &operator=(const CUSolverDevice &) = delete;
+
+private:
+    void init(uintptr_t outers_ptr, uintptr_t indices_ptr, uintptr_t values_ptr);
+
+    int n, nnz;
+    int stage = 0; // 0: not analyzed, 1: analyzed, 2: factorized
+    cudssHandle_t handle = nullptr;
+    cudssConfig_t solver_config = nullptr;
+    cudssData_t solver_data = nullptr;
+    cudssMatrix_t A = nullptr, x = nullptr, b = nullptr;
+    int *outers_d = nullptr, *indices_d = nullptr;
+    double *values_d = nullptr, *b_d = nullptr, *x_d = nullptr;
 };

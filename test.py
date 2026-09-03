@@ -1,41 +1,92 @@
-import numpy as np 
-from dxslv import CUSolver
-from scipy.sparse import csr_matrix, csc_matrix, diags
-dim = 100
-x = np.random.rand(dim)
-a = np.random.rand(dim, dim)
-a = a + a.T
-a1 = np.random.rand(dim, dim)
-a1 = a1 + a1.T
-# a = np.identity(dim)
-# a = diags(np.random.rand(dim))
-for i in range(dim):
-    a[i, i] += np.sum(a[i])
-    a1[i, i] += np.sum(a1[i])
-print("a.T - a = ", np.max(np.abs(a.T - a)))
+import numpy as np
+from scipy.sparse import csr_matrix
 
-b = a @ x 
-a_sparse = csc_matrix(a)
-print(a_sparse.indices, a_sparse.indptr)
-# solver = CUSolver(a_sparse)
-solver = CUSolver(a_sparse.indptr[:], a_sparse.indices, a_sparse.data)
-solver.analyze_pattern()
-solver.factorize()
-# b[:] = 0.0
-x_solved = solver.solve(b)
-diff = x_solved - x
-print("x solved = ", x_solved)
-print("x original = ", x)
-# print("b = ", b)
-print(f"Max difference: {np.max(np.abs(diff))}")
-rhs_diff = a_sparse @ x_solved - b
-print("Max difference in rhs: ", np.max(np.abs(rhs_diff)))
+from dxslv import CUSolver, CUSolverDevice
 
-solver.refactorize(a1.reshape(-1))
-b1 = a1 @ x
-x_solved1 = solver.solve(b1)
-diff1 = x_solved1 - x
-print("x solved after refactorization = ", x_solved1)
-print(f"Max difference: {np.max(np.abs(diff1))}")
-rhs_diff1 = a1 @ x_solved1 - b1
-print("Max difference in rhs: ", np.max(np.abs(rhs_diff1)))
+
+DIM = 100
+TOLERANCE = 1.0e-10
+
+
+def make_problem(dim=DIM):
+    rng = np.random.default_rng(0)
+    x = rng.random(dim)
+
+    a = rng.random((dim, dim))
+    a = a + a.T
+    a[np.diag_indices(dim)] += np.sum(a, axis=1)
+
+    a_refactored = rng.random((dim, dim))
+    a_refactored = a_refactored + a_refactored.T
+    a_refactored[np.diag_indices(dim)] += np.sum(a_refactored, axis=1)
+
+    return x, csr_matrix(a), csr_matrix(a_refactored)
+
+
+def test_cusolver():
+    x, a, a_refactored = make_problem()
+    b = a @ x
+
+    solver = CUSolver(a.indptr, a.indices, a.data)
+    solver.analyze_pattern()
+    solver.factorize()
+
+    x_solved = solver.solve(b)
+    np.testing.assert_allclose(x_solved, x, rtol=0.0, atol=TOLERANCE)
+    np.testing.assert_allclose(a @ x_solved, b, rtol=0.0, atol=TOLERANCE)
+
+    b_refactored = a_refactored @ x
+    solver.refactorize(a_refactored.data)
+    x_solved = solver.solve(b_refactored)
+    np.testing.assert_allclose(x_solved, x, rtol=0.0, atol=TOLERANCE)
+    np.testing.assert_allclose(
+        a_refactored @ x_solved, b_refactored, rtol=0.0, atol=TOLERANCE
+    )
+
+
+def test_cusolver_device():
+    import warp as wp
+
+    x, a, a_refactored = make_problem()
+    b = a @ x
+    n = a.shape[0]
+
+    outers_d = wp.array(a.indptr, dtype=wp.int32, device="cuda")
+    indices_d = wp.array(a.indices, dtype=wp.int32, device="cuda")
+    values_d = wp.array(a.data, dtype=wp.float64, device="cuda")
+    b_d = wp.array(b, dtype=wp.float64, device="cuda")
+    x_d = wp.zeros(n, dtype=wp.float64, device="cuda")
+    wp.synchronize()
+
+    solver = CUSolverDevice(
+        outers_d.ptr, indices_d.ptr, values_d.ptr, n, a.nnz
+    )
+    solver.analyze_pattern()
+    solver.factorize()
+    solver.solve(b_d.ptr, x_d.ptr)
+    wp.synchronize()
+
+    x_solved = x_d.numpy()
+    np.testing.assert_allclose(x_solved, x, rtol=0.0, atol=TOLERANCE)
+    np.testing.assert_allclose(a @ x_solved, b, rtol=0.0, atol=TOLERANCE)
+
+    b_refactored = a_refactored @ x
+    values_refactored_d = wp.array(
+        a_refactored.data, dtype=wp.float64, device="cuda"
+    )
+    b_refactored_d = wp.array(b_refactored, dtype=wp.float64, device="cuda")
+    solver.refactorize(values_refactored_d.ptr)
+    solver.solve(b_refactored_d.ptr, x_d.ptr)
+    wp.synchronize()
+
+    x_solved = x_d.numpy()
+    np.testing.assert_allclose(x_solved, x, rtol=0.0, atol=TOLERANCE)
+    np.testing.assert_allclose(
+        a_refactored @ x_solved, b_refactored, rtol=0.0, atol=TOLERANCE
+    )
+
+
+if __name__ == "__main__":
+    # test_cusolver()
+    test_cusolver_device()
+    print("All solver tests passed.")

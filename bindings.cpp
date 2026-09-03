@@ -18,4 +18,16 @@ PYBIND11_MODULE(dxslv, m)
         .def("solve_cuda", &CUSolver::solve_dev)
         .def("refactorize", &CUSolver::refactorize)
         .def("refactor_cuda", &CUSolver::refactorize_dev);
+
+    py::class_<CUSolverDevice>(m, "CUSolverDevice")
+        .def(py::init<uintptr_t, uintptr_t, uintptr_t, int, int>(),
+             py::arg("outers_ptr"), py::arg("indices_ptr"), py::arg("values_ptr"),
+             py::arg("n"), py::arg("nnz"))
+        .def("analyze_pattern", &CUSolverDevice::analyze_pattern)
+        .def("factorize", &CUSolverDevice::factorize)
+        .def("solve", &CUSolverDevice::solve, py::arg("b_ptr"), py::arg("x_ptr"))
+        .def("refactorize", &CUSolverDevice::refactorize, py::arg("new_values_ptr"));
+
+    // A descriptive alias for callers that prefer GPU terminology.
+    m.attr("CUSolverGPU") = m.attr("CUSolverDevice");
 }
